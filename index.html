@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Moscart Control Terminal v4.4</title>
+<title>Moscart Control Terminal v4.5</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   
@@ -103,7 +103,7 @@
   .toggle-switch.mode-on { background: var(--danger); }
   .toggle-switch.mode-delay::after, .toggle-switch.mode-on::after { transform: translateX(30px); }
   
-  /* オプション用トグル（ON時は緑） */
+  /* オプション用トグル（【修正】ON時は緑） */
   .toggle-switch.opt-on { background: var(--success); }
   .toggle-switch.opt-on::after { transform: translateX(30px); }
   
@@ -163,7 +163,7 @@
 
 <header>
   <h1>Moscart Launcher</h1>
-  <div class="sub">Control Terminal v4.4</div>
+  <div class="sub">Control Terminal v4.5</div>
 </header>
 
 <button id="btnConnect" class="btn btn-ble">🔷 BLEデバイスに接続</button>
@@ -275,257 +275,4 @@ const SERVICE_UUID     = "12345678-1234-5678-1234-56789abcdef0";
 const CHAR_CMD_UUID    = "12345678-1234-5678-1234-56789abcdef1";
 const CHAR_STATUS_UUID = "12345678-1234-5678-1234-56789abcdef2";
 
-let bleDevice = null;
-let cmdCharacteristic = null;
-let statusCharacteristic = null;
-let connected = false;
-let hasInitialSyncDone = false;
-let serverArmedState = false; // マイコン側の警戒ON/OFFの最新状態を記憶する変数
-
-function log(msg, type='') {
-  const consoleLog = document.getElementById('log');
-  const d = new Date();
-  const timeStr = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
-  const entry = document.createElement('div');
-  entry.className = `log-entry ${type ? 'log-'+type : ''}`;
-  entry.textContent = `[${timeStr}] ${msg}`;
-  consoleLog.appendChild(entry);
-  consoleLog.scrollTop = consoleLog.scrollHeight;
-}
-
-function setUiEnabled(enabled) {
-  const inputs = document.querySelectorAll('button:not(#btnConnect), input');
-  inputs.forEach(el => el.disabled = !enabled);
-  
-  // トグルスイッチの無効・有効クラス切り替え
-  document.getElementById('modeToggle').classList.toggle('disabled', !enabled);
-  document.getElementById('keepArmedToggle').classList.toggle('disabled', !enabled);
-}
-
-function setupPureSync(sliderId, inputId) {
-  const slider = document.getElementById(sliderId);
-  const input = document.getElementById(inputId);
-
-  slider.addEventListener('input', (e) => { input.value = e.target.value; });
-  input.addEventListener('input', (e) => {
-    let v = parseInt(e.target.value) || 0;
-    v = Math.max(parseInt(input.min), Math.min(parseInt(input.max), v));
-    slider.value = v;
-  });
-}
-
-setupPureSync('distSlider', 'distInput');
-setupPureSync('cdSlider', 'cdInput');
-setupPureSync('sdSlider', 'sdInput');
-setupPureSync('adSlider', 'adInput');
-
-// BLE接続
-document.getElementById('btnConnect').addEventListener('click', async () => {
-  if (connected) {
-    if(bleDevice) await bleDevice.gatt.disconnect();
-    return;
-  }
-  try {
-    log('BLEデバイスを探しています...', 'warn');
-    bleDevice = await navigator.bluetooth.requestDevice({
-      filters: [{ services: [SERVICE_UUID] }]
-    });
-    
-    log('接続中...');
-    const server = await bleDevice.gatt.connect();
-    const service = await server.getPrimaryService(SERVICE_UUID);
-    cmdCharacteristic = await service.getCharacteristic(CHAR_CMD_UUID);
-    statusCharacteristic = await service.getCharacteristic(CHAR_STATUS_UUID);
-    
-    bleDevice.addEventListener('gattserverdisconnected', onDisconnected);
-    
-    await statusCharacteristic.startNotifications();
-    statusCharacteristic.addEventListener('characteristicvaluechanged', handleStatusNotify);
-    
-    connected = true;
-    hasInitialSyncDone = false;
-    document.getElementById('btnConnect').textContent = '🔌 切断する';
-    document.getElementById('btnConnect').className = 'btn btn-ble connected';
-    setUiEnabled(true);
-    log('通信が確立しました。同期完了。', 'success');
-    
-    sendCommand({cmd: "get_status"});
-  } catch (err) {
-    log(`接続失敗: ${err.message}`, 'error');
-  }
-});
-
-function onDisconnected() {
-  connected = false;
-  hasInitialSyncDone = false;
-  document.getElementById('btnConnect').textContent = '🔷 BLEデバイスに接続';
-  document.getElementById('btnConnect').className = 'btn btn-ble';
-  
-  const lblArmed = document.getElementById('lblArmed');
-  lblArmed.textContent = '切断中';
-  lblArmed.className = 'badge bg-off';
-  
-  // トグルのリセット
-  const modeToggle = document.getElementById('modeToggle');
-  modeToggle.className = 'toggle-switch disabled';
-  document.getElementById('txtModeToggleLabel').textContent = '警戒モード: OFF';
-  
-  document.body.classList.remove('armed');
-  setUiEnabled(false);
-  log('Bluetooth接続が切れました。', 'error');
-}
-
-async function sendCommand(obj) {
-  if (!connected || !cmdCharacteristic) return;
-  const str = JSON.stringify(obj);
-  const enc = new TextEncoder();
-  try {
-    await cmdCharacteristic.writeValueWithoutResponse(enc.encode(str));
-  } catch (err) {
-    log(`コマンド送信失敗: ${err.message}`, 'error');
-  }
-}
-
-// 警戒モード トグルスイッチのクリックイベント
-document.getElementById('modeToggle').addEventListener('click', () => {
-  if (!connected) return;
-  if (serverArmedState) {
-    sendCommand({cmd: 'disarm'});
-    log('🟢 警戒モードの解除要求を送信しました');
-  } else {
-    sendCommand({cmd: 'arm'});
-    log('🔴 警戒モードの有効化要求を送信しました');
-  }
-});
-
-// ステータス通知の受信処理
-function handleStatusNotify(event) {
-  const dec = new TextDecoder();
-  const str = dec.decode(event.target.value);
-  try {
-    const data = JSON.parse(str);
-    
-    serverArmedState = data.armed; // 現在の状態を保存
-    
-    // 1. モード表示 & トグルスイッチのビジュアル同期
-    const lblArmed = document.getElementById('lblArmed');
-    const modeToggle = document.getElementById('modeToggle');
-    const toggleTxt = document.getElementById('txtModeToggleLabel');
-    
-    if (data.armed) {
-      document.body.classList.add('armed');
-      if (data.start_delay_remain > 0) {
-        lblArmed.textContent = `監視開始まで あと ${data.start_delay_remain} 秒`;
-        lblArmed.className = 'badge bg-delay';
-        
-        // スイッチをオレンジ(ディレイ状態)に
-        modeToggle.className = 'toggle-switch mode-delay';
-        toggleTxt.textContent = `警戒モード: 待機タイム (${data.start_delay_remain}s)`;
-      } else {
-        lblArmed.textContent = '警戒中 (監視ON)';
-        lblArmed.className = 'badge bg-on';
-        
-        // スイッチを赤(ON状態)に
-        modeToggle.className = 'toggle-switch mode-on';
-        toggleTxt.textContent = '警戒モード: ON';
-      }
-    } else {
-      document.body.classList.remove('armed');
-      lblArmed.textContent = '解除中 (安全OFF)';
-      lblArmed.className = 'badge bg-off';
-      
-      // スイッチをグレー(OFF状態)に
-      modeToggle.className = 'toggle-switch';
-      toggleTxt.textContent = '警戒モード: OFF';
-    }
-    
-    // 2. レーダー情報の更新
-    document.getElementById('lblDetected').textContent = data.detected ? '⚠️ 動体検知あり' : 'クリア';
-    document.getElementById('lblDetected').style.color = data.detected ? 'var(--danger)' : 'var(--success)';
-    document.getElementById('lblDistance').textContent = data.target_cm > 0 ? `${data.target_cm} cm` : '—';
-    if (data.cooldown) document.getElementById('lblDistance').textContent += " (冷却中)";
-
-    // 3. タイマー表示
-    const lblTimer = document.getElementById('lblTimer');
-    if (data.armed) {
-      if (data.start_delay_remain > 0) {
-        lblTimer.textContent = 'ディレイ待機中...';
-      } else if (data.auto_disarm_remain >= 0) {
-        lblTimer.textContent = `${data.auto_disarm_remain} 秒 / ${data.auto_disarm_sec} 秒`;
-      } else {
-        lblTimer.textContent = '常時警戒モード';
-      }
-    } else {
-      lblTimer.textContent = '—';
-    }
-    
-    // 4. オプションスイッチの同期
-    const toggle = document.getElementById('keepArmedToggle');
-    if (data.keep_armed) toggle.classList.add('on');
-    else toggle.classList.remove('on');
-
-    // 5. 既存設定値の独立表示
-    document.getElementById('currentDistDisp').textContent = `既存値: ${data.distance} cm`;
-    const cdSec = data.cooldown_ms / 1000;
-    document.getElementById('currentCdDisp').textContent = `既存値: ${cdSec} 秒`;
-    document.getElementById('currentSdDisp').textContent = `既存値: ${data.start_delay_sec} 秒`;
-    document.getElementById('currentAdDisp').textContent = `既存値: ${data.auto_disarm_sec} 秒`;
-
-    // 6. 初回接続時のみスライダー初期値を反映
-    if (!hasInitialSyncDone) {
-      document.getElementById('distSlider').value = data.distance;
-      document.getElementById('distInput').value = data.distance;
-      document.getElementById('cdSlider').value = cdSec;
-      document.getElementById('cdInput').value = cdSec;
-      document.getElementById('sdSlider').value = data.start_delay_sec;
-      document.getElementById('sdInput').value = data.start_delay_sec;
-      document.getElementById('adInput').value = data.auto_disarm_sec;
-      document.getElementById('adSlider').value = Math.min(data.auto_disarm_sec, 600);
-      hasInitialSyncDone = true;
-    }
-    
-  } catch (e) { }
-}
-
-// 各設定ボタンのイベント
-document.getElementById('btnFire').addEventListener('click', () => { sendCommand({cmd: 'fire'}); });
-document.getElementById('btnSetDist').addEventListener('click', () => {
-  const v = parseInt(document.getElementById('distInput').value);
-  sendCommand({cmd: 'set_distance', value: v});
-  log(`設定変更送信: 有効距離を ${v} cm に指定しました`);
-});
-document.getElementById('btnSetCd').addEventListener('click', () => {
-  const v = parseInt(document.getElementById('cdInput').value);
-  sendCommand({cmd: 'set_cooldown', value: v});
-  log(`設定変更送信: クールダウンを ${v} 秒に指定しました`);
-});
-document.getElementById('btnSetSd').addEventListener('click', () => {
-  const v = parseInt(document.getElementById('sdInput').value);
-  sendCommand({cmd: 'set_start_delay', value: v});
-  log(`設定変更送信: 監視開始ディレイを ${v} 秒に指定しました`);
-});
-document.getElementById('btnSetAd').addEventListener('click', () => {
-  const v = parseInt(document.getElementById('adInput').value);
-  sendCommand({cmd: 'set_auto_disarm', value: v});
-  log(`設定変更送信: 自動解除タイマーを ${v} 秒に指定しました`);
-});
-
-document.getElementById('keepArmedToggle').addEventListener('click', () => {
-  if (!connected) return;
-  const toggle = document.getElementById('keepArmedToggle');
-  const isNowOn = toggle.classList.contains('on');
-  sendCommand({cmd: 'set_keep_armed', value: !isNowOn});
-  log(`オプション: 切断時警戒維持を ${!isNowOn ? 'ON' : 'OFF'} に切り替え`);
-});
-
-document.getElementById('btnSave').addEventListener('click', () => { sendCommand({cmd: 'save_settings'}); log('💾 パラメータをマイコンの内蔵フラッシュ(NVS)に保存しました', 'success'); });
-document.getElementById('btnReset').addEventListener('click', () => {
-  if (confirm('すべての内部設定をデフォルト(初期値)に戻しますか？')) {
-    sendCommand({cmd: 'reset_settings'});
-    hasInitialSyncDone = false;
-    log('🔄 システムパラメータを初期化しました', 'warn');
-  }
-});
-</script>
-</body>
-</html>
+let
