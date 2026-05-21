@@ -3,721 +3,492 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Moscart Launcher Control v4</title>
+<title>Moscart Control Terminal v4.2</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   
   :root {
-    --bg: #1a1a1a;
-    --card: #2a2a2a;
-    --border: #333;
-    --text: #e0e0e0;
-    --muted: #888;
+    --bg: #131722;
+    --card: #1c2030;
+    --border: #2a2f45;
+    --text: #e0e6ed;
+    --muted: #78829d;
+    --accent: #3b82f6;
+    --danger: #ef4444;
+    --success: #10b981;
+    --warning: #f59e0b;
   }
   
   body {
-    font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     background: var(--bg);
     color: var(--text);
-    padding: 20px;
-    max-width: 500px;
+    padding: 16px;
+    max-width: 480px;
     margin: 0 auto;
     min-height: 100vh;
-    transition: background 0.3s;
+    transition: background 0.4s ease;
   }
   
-  body.armed { background: #5a1a1a; }
+  body.armed { background: #2d1414; }
   body.armed .card {
-    background: #3a2020;
-    border-color: #6a3030;
+    background: #3d1b1b;
+    border-color: #5c2424;
   }
   
-  h1 {
-    font-size: 24px;
-    margin-bottom: 4px;
-    color: #fff;
-  }
-  
-  .subtitle {
-    color: var(--muted);
-    font-size: 12px;
+  header {
+    text-align: center;
     margin-bottom: 20px;
   }
+  h1 { font-size: 22px; color: #fff; margin-bottom: 4px; }
+  .sub { color: var(--muted); font-size: 12px; }
   
   .card {
     background: var(--card);
-    border-radius: 12px;
-    padding: 18px;
-    margin-bottom: 14px;
     border: 1px solid var(--border);
-    transition: background 0.3s, border-color 0.3s;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.15);
   }
   
-  .status-row {
+  .card-title {
+    font-size: 14px;
+    font-weight: bold;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 14px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin: 6px 0;
-    padding: 6px 0;
-    border-bottom: 1px solid rgba(255,255,255,0.08);
   }
-  .status-row:last-child { border-bottom: none; }
-  
-  .status-label {
-    color: var(--muted);
-    font-size: 13px;
+
+  .status-grid {
+    display: grid;
+    grid-template-columns: 130px 1fr;
+    gap: 12px;
+    align-items: center;
   }
-  
-  .status-value {
-    font-weight: 600;
-    font-size: 14px;
-  }
+  .status-label { color: var(--muted); font-size: 14px; }
+  .status-val { font-size: 16px; font-weight: bold; }
   
   .badge {
     padding: 4px 10px;
-    border-radius: 12px;
-    font-size: 12px;
-    font-weight: 600;
+    border-radius: 20px;
+    font-size: 13px;
+    display: inline-block;
   }
+  .bg-off { background: #374151; color: #d1d5db; }
+  .bg-delay { background: #b45309; color: #fef3c7; animation: blink 1s infinite; }
+  .bg-on { background: #991b1b; color: #fee2e2; }
   
-  .badge-detected { background: #d69e2e; color: white; }
-  .badge-clear   { background: #2d3748; color: #a0aec0; }
-  .badge-cooldown { background: #3182ce; color: white; }
-  .badge-bt-on   { background: #38a169; color: white; }
-  .badge-bt-off  { background: #2d3748; color: #a0aec0; }
-  
-  .section-title {
-    font-size: 12px;
-    color: var(--muted);
-    margin-bottom: 10px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
-  
-  button {
+  @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+  .btn {
+    display: block;
     width: 100%;
     padding: 14px;
-    font-size: 16px;
-    font-weight: 600;
     border: none;
     border-radius: 8px;
+    font-size: 16px;
+    font-weight: bold;
     cursor: pointer;
-    margin: 6px 0;
-    transition: transform 0.1s, opacity 0.2s;
-    -webkit-tap-highlight-color: transparent;
-  }
-  button:active { transform: scale(0.98); }
-  button:disabled { opacity: 0.4; cursor: not-allowed; }
-  
-  .btn-connect { background: #3182ce; color: white; }
-  .btn-fire {
-    background: #d69e2e;
-    color: white;
-    font-size: 18px;
-    padding: 18px;
-  }
-  .btn-fire:disabled { background: #4a5568; }
-  .btn-send { background: #4a5568; color: white; padding: 10px; font-size: 14px; }
-  .btn-save { background: #38a169; color: white; }
-  .btn-reset { background: #742a2a; color: white; font-size: 13px; padding: 10px; }
-  
-  /* トグルスイッチ（大） */
-  .toggle-container {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 8px 0;
-  }
-  
-  .toggle-label {
-    font-size: 18px;
-    font-weight: 600;
-  }
-  
-  .toggle-switch {
-    position: relative;
-    width: 80px;
-    height: 44px;
-    background: #444;
-    border-radius: 22px;
-    cursor: pointer;
-    transition: background 0.3s;
-    -webkit-tap-highlight-color: transparent;
-  }
-  
-  .toggle-switch.on { background: #c53030; }
-  .toggle-switch.disabled { opacity: 0.4; cursor: not-allowed; }
-  
-  .toggle-knob {
-    position: absolute;
-    top: 4px;
-    left: 4px;
-    width: 36px;
-    height: 36px;
-    background: white;
-    border-radius: 50%;
-    transition: transform 0.3s;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-  }
-  
-  .toggle-switch.on .toggle-knob {
-    transform: translateX(36px);
-  }
-  
-  /* 小トグルスイッチ */
-  .mini-toggle {
-    position: relative;
-    width: 52px;
-    height: 30px;
-    background: #444;
-    border-radius: 15px;
-    cursor: pointer;
-    transition: background 0.3s;
-    -webkit-tap-highlight-color: transparent;
-  }
-  .mini-toggle.on { background: #38a169; }
-  .mini-toggle.disabled { opacity: 0.4; cursor: not-allowed; }
-  
-  .mini-toggle-knob {
-    position: absolute;
-    top: 3px;
-    left: 3px;
-    width: 24px;
-    height: 24px;
-    background: white;
-    border-radius: 50%;
-    transition: transform 0.3s;
-  }
-  .mini-toggle.on .mini-toggle-knob {
-    transform: translateX(22px);
-  }
-  
-  /* 設定 */
-  .setting-label {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 14px;
-    color: var(--text);
-    margin-bottom: 8px;
-  }
-  
-  .setting-value {
-    font-size: 18px;
-    font-weight: 600;
-    color: #d69e2e;
-  }
-  
-  .setting-controls {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-  }
-  
-  input[type="range"] {
-    flex: 1;
-    height: 30px;
-  }
-  
-  input[type="number"] {
-    width: 80px;
-    padding: 8px;
-    background: var(--bg);
-    border: 1px solid #555;
-    color: var(--text);
-    border-radius: 6px;
-    text-align: right;
-    font-size: 14px;
-  }
-  
-  /* カウントダウン表示 */
-  .countdown-display {
     text-align: center;
-    padding: 14px;
-    background: rgba(255,255,255,0.05);
-    border-radius: 8px;
-    margin-top: 12px;
-    font-size: 14px;
-    color: var(--muted);
+    transition: all 0.2s;
   }
+  .btn-ble { background: var(--accent); color: white; }
+  .btn-ble.connected { background: #374151; }
+  .btn-arm { background: var(--danger); color: white; margin-bottom: 12px; }
+  .btn-disarm { background: var(--success); color: white; }
+  .btn-fire { background: #f59e0b; color: #000; font-size: 18px; letter-spacing: 0.2em; height: 70px; }
+  .btn-action { background: #2d3142; color: #fff; padding: 8px 12px; font-size: 13px; width: auto; border-radius: 6px; }
+  .btn:active { transform: scale(0.98); opacity: 0.9; }
+  .btn:disabled { opacity: 0.3; cursor: not-allowed; transform: none; }
+
+  .ctrl-group { margin-bottom: 16px; }
+  .ctrl-group:last-child { margin-bottom: 0; }
+  .ctrl-header { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 6px; }
+  .ctrl-title { font-weight: 500; }
+  .ctrl-num { color: var(--accent); font-weight: bold; }
   
-  .countdown-display.active {
-    background: rgba(214, 158, 46, 0.2);
-    color: #d69e2e;
+  .flex-inputs { display: flex; gap: 10px; align-items: center; }
+  input[type="range"] { flex: 1; accent-color: var(--accent); height: 6px; cursor: pointer; }
+  input[type="number"] {
+    width: 70px; background: #131722; border: 1px solid var(--border);
+    color: #fff; padding: 6px; border-radius: 4px; text-align: center; font-size: 14px;
   }
-  
-  .countdown-display.urgent {
-    background: rgba(197, 48, 48, 0.3);
-    color: #fc8181;
-    animation: pulse 1s ease-in-out infinite;
+
+  .toggle-container {
+    display: flex; justify-content: space-between; align-items: center; padding: 6px 0;
   }
-  
-  .countdown-time {
-    font-size: 32px;
-    font-weight: 700;
-    display: block;
-    margin: 4px 0;
-    font-variant-numeric: tabular-nums;
+  .toggle-switch {
+    width: 50px; height: 26px; background: #374151; border-radius: 13px;
+    position: relative; cursor: pointer; transition: background 0.3s;
   }
-  
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.6; }
+  .toggle-switch::after {
+    content: ''; width: 20px; height: 20px; background: #fff; border-radius: 50%;
+    position: absolute; top: 3px; left: 3px; transition: transform 0.3s;
   }
-  
-  .log {
-    background: #0a0a0a;
-    border: 1px solid var(--border);
-    padding: 10px;
-    border-radius: 8px;
-    font-family: "SF Mono", Menlo, monospace;
-    font-size: 11px;
-    max-height: 140px;
-    overflow-y: auto;
-    line-height: 1.5;
+  .toggle-switch.on { background: var(--success); }
+  .toggle-switch.on::after { transform: translateX(24px); }
+
+  #log {
+    height: 120px; background: #0b0d14; border: 1px solid var(--border);
+    border-radius: 6px; padding: 8px; font-family: monospace; font-size: 11px;
+    overflow-y: auto; white-space: pre-wrap;
   }
-  
-  body.armed .log { background: #1a0a0a; }
-  
-  .log-entry { margin: 2px 0; color: #a0aec0; }
-  .log-error { color: #fc8181; }
-  .log-success { color: #68d391; }
-  .log-fire { color: #f6ad55; font-weight: 600; }
+  .log-entry { margin-bottom: 4px; color: #a0aec0; }
+  .log-success { color: var(--success); }
+  .log-error { color: var(--danger); }
+  .log-warn { color: var(--warning); }
 </style>
 </head>
 <body>
 
-<h1>🎯 Moscart Launcher</h1>
-<div class="subtitle">Web Bluetooth Control v4</div>
+<header>
+  <h1>Moscart Launcher</h1>
+  <div class="sub">Control Terminal v4.2</div>
+</header>
 
-<!-- 接続 -->
-<div class="card">
-  <div class="status-row" style="border:none; padding:0;">
-    <span class="status-label">BLE接続</span>
-    <span id="btState" class="badge badge-bt-off">未接続</span>
+<button id="btnConnect" class="btn btn-ble">🔷 BLEデバイスに接続</button>
+
+<div class="card" style="margin-top:16px;">
+  <div class="card-title">現在のステータス</div>
+  <div class="status-grid">
+    <div class="status-label">モード状態:</div>
+    <div><span id="lblArmed" class="badge bg-off">切断中</span></div>
+    
+    <div class="status-label">レーダー検知:</div>
+    <div id="lblDetected" class="status-val">—</div>
+    
+    <div class="status-label">ターゲット距離:</div>
+    <div id="lblDistance" class="status-val">—</div>
+    
+    <div class="status-label">自動解除まで:</div>
+    <div id="lblTimer" class="status-val">—</div>
   </div>
-  <button id="btnConnect" class="btn-connect" style="margin-top:10px;">BLE接続</button>
 </div>
 
-<!-- 武装トグル -->
 <div class="card">
+  <div class="card-title">モード切替制御</div>
+  <button id="btnArm" class="btn btn-arm" disabled>🔴 警戒モード ON (監視開始)</button>
+  <button id="btnDisarm" class="btn btn-disarm" disabled>🟢 警戒モード OFF (安全解除)</button>
+</div>
+
+<div class="card">
+  <div class="card-title">ダイレクトトリガー</div>
+  <button id="btnFire" class="btn btn-fire" disabled>🔥 手動発火</button>
+</div>
+
+<div class="card">
+  <div class="card-title">パラメータ調整</div>
+  
+  <div class="ctrl-group">
+    <div class="ctrl-header">
+      <span class="ctrl-title">検知有効距離</span>
+      <span class="ctrl-num"><span id="distValue">100</span> cm</span>
+    </div>
+    <div class="flex-inputs">
+      <input type="range" id="distSlider" min="10" max="500" value="100" disabled>
+      <input type="number" id="distInput" min="10" max="500" value="100" disabled>
+      <button id="btnSetDist" class="btn btn-action" disabled>設定</button>
+    </div>
+  </div>
+
+  <div class="ctrl-group">
+    <div class="ctrl-header">
+      <span class="ctrl-title">射撃後クールダウン</span>
+      <span class="ctrl-num"><span id="cdValue">5</span> 秒</span>
+    </div>
+    <div class="flex-inputs">
+      <input type="range" id="cdSlider" min="0" max="60" value="5" disabled>
+      <input type="number" id="cdInput" min="0" max="300" value="5" disabled>
+      <button id="btnSetCd" class="btn btn-action" disabled>設定</button>
+    </div>
+  </div>
+
+  <div class="ctrl-group">
+    <div class="ctrl-header">
+      <span class="ctrl-title">ON後の検知開始ディレイ</span>
+      <span class="ctrl-num"><span id="sdValue">3</span> 秒</span>
+    </div>
+    <div class="flex-inputs">
+      <input type="range" id="sdSlider" min="0" max="60" value="3" disabled>
+      <input type="number" id="sdInput" min="0" max="60" value="3" disabled>
+      <button id="btnSetSd" class="btn btn-action" disabled>設定</button>
+    </div>
+  </div>
+
+  <div class="ctrl-group">
+    <div class="ctrl-header">
+      <span class="ctrl-title">自動警戒解除タイマー (0で無効)</span>
+      <span class="ctrl-num"><span id="adValue">0</span> 秒</span>
+    </div>
+    <div class="flex-inputs">
+      <input type="range" id="adSlider" min="0" max="600" value="0" step="5" disabled>
+      <input type="number" id="adInput" min="0" max="3600" value="0" disabled>
+      <button id="btnSetAd" class="btn btn-action" disabled>設定</button>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">システムオプション</div>
   <div class="toggle-container">
-    <span class="toggle-label">武装 (ARM)</span>
-    <div id="armToggle" class="toggle-switch disabled">
-      <div class="toggle-knob"></div>
-    </div>
+    <span style="font-size:14px; font-weight:500;">Bluetooth切断時も警戒状態を維持する</span>
+    <div id="keepArmedToggle" class="toggle-switch"></div>
   </div>
-  <div id="countdownDisplay" class="countdown-display">
-    自動解除タイマー: OFF
-  </div>
-</div>
-
-<!-- 手動発火 -->
-<div class="card">
-  <button id="btnFire" class="btn-fire" disabled>💥 手動発火</button>
-  <div style="text-align:center; color:var(--muted); font-size:11px; margin-top:4px;">
-    ARM/DISARM問わず即発射
+  <div style="display:flex; gap:10px; margin-top:14px;">
+    <button id="btnSave" class="btn btn-action" style="flex:1; padding:10px;" disabled>💾 設定を永続保存</button>
+    <button id="btnReset" class="btn btn-action" style="flex:1; padding:10px; background:#451a1a;" disabled>🔄 工場リセット</button>
   </div>
 </div>
 
-<!-- センサー状態 -->
 <div class="card">
-  <div class="section-title">センサー状態</div>
-  <div class="status-row">
-    <span class="status-label">検知</span>
-    <span id="detectState" class="badge badge-clear">なし</span>
-  </div>
-  <div class="status-row">
-    <span class="status-label">検知距離</span>
-    <span id="detectDistance" class="status-value">- cm</span>
-  </div>
-  <div class="status-row">
-    <span class="status-label">クールダウン</span>
-    <span id="cooldownState" class="badge badge-clear">-</span>
-  </div>
-</div>
-
-<!-- 検知距離設定 -->
-<div class="card">
-  <div class="setting-label">
-    <span>検知距離</span>
-    <span class="setting-value"><span id="distValue">100</span> cm</span>
-  </div>
-  <div class="setting-controls">
-    <input type="range" id="distSlider" min="10" max="500" value="100" step="10">
-    <input type="number" id="distInput" min="10" max="500" value="100" step="10">
-  </div>
-  <button id="btnSetDist" class="btn-send" disabled>距離を設定</button>
-</div>
-
-<!-- クールダウン設定 -->
-<div class="card">
-  <div class="setting-label">
-    <span>クールダウン時間</span>
-    <span class="setting-value"><span id="cdValue">5</span> 秒</span>
-  </div>
-  <div class="setting-controls">
-    <input type="range" id="cdSlider" min="0" max="60" value="5" step="1">
-    <input type="number" id="cdInput" min="0" max="300" value="5" step="1">
-  </div>
-  <button id="btnSetCd" class="btn-send" disabled>クールダウンを設定</button>
-</div>
-
-<!-- 自動DISARMタイマー -->
-<div class="card">
-  <div class="setting-label">
-    <span>自動DISARMタイマー</span>
-    <span class="setting-value"><span id="adValue">0</span> 秒</span>
-  </div>
-  <div style="font-size:11px; color:var(--muted); margin-bottom:8px;">
-    0 = 無効 / ARM後この秒数で自動解除
-  </div>
-  <div class="setting-controls">
-    <input type="range" id="adSlider" min="0" max="600" value="0" step="10">
-    <input type="number" id="adInput" min="0" max="3600" value="0" step="10">
-  </div>
-  <button id="btnSetAd" class="btn-send" disabled>タイマーを設定</button>
-</div>
-
-<!-- BLE切断時の動作 -->
-<div class="card">
-  <div class="setting-label" style="margin-bottom:4px;">
-    <span>BLE切断時もARM維持</span>
-    <div id="keepArmedToggle" class="mini-toggle disabled">
-      <div class="mini-toggle-knob"></div>
-    </div>
-  </div>
-  <div style="font-size:11px; color:var(--muted);">
-    ON: 切断後もARM継続（フィールド設置用）<br>
-    OFF: 切断時に自動DISARM（安全優先）
-  </div>
-</div>
-
-<!-- 設定保存 -->
-<div class="card">
-  <div class="section-title">設定の保存</div>
-  <div style="font-size:11px; color:var(--muted); margin-bottom:10px;">
-    現在の設定をNVSに保存します。電源を切っても設定が残ります。
-  </div>
-  <button id="btnSave" class="btn-save" disabled>💾 設定を保存</button>
-  <button id="btnReset" class="btn-reset" disabled>⚠️ 工場リセット</button>
-</div>
-
-<!-- ログ -->
-<div class="card">
-  <div class="section-title">ログ</div>
-  <div id="log" class="log">
-    <div class="log-entry">待機中...</div>
-  </div>
+  <div class="card-title">オペレーションログ</div>
+  <div id="log"></div>
 </div>
 
 <script>
-const SERVICE_UUID     = '12345678-1234-5678-1234-56789abcdef0';
-const CHAR_CMD_UUID    = '12345678-1234-5678-1234-56789abcdef1';
-const CHAR_STATUS_UUID = '12345678-1234-5678-1234-56789abcdef2';
+const SERVICE_UUID     = "12345678-1234-5678-1234-56789abcdef0";
+const CHAR_CMD_UUID    = "12345678-1234-5678-1234-56789abcdef1";
+const CHAR_STATUS_UUID = "12345678-1234-5678-1234-56789abcdef2";
 
-let device = null;
-let cmdChar = null;
-let statusChar = null;
+let bleDevice = null;
+let cmdCharacteristic = null;
+let statusCharacteristic = null;
 let connected = false;
-let lastArmedState = false;
+let userInteracting = false; // スライダー操作中の引き戻し防止フラグ
+let interactTimeout = null;
 
-const logEl = document.getElementById('log');
-
-function log(msg, cls = '') {
-  const div = document.createElement('div');
-  div.className = 'log-entry ' + cls;
-  const t = new Date().toTimeString().split(' ')[0];
-  div.textContent = `[${t}] ${msg}`;
-  logEl.insertBefore(div, logEl.firstChild);
-  while (logEl.children.length > 50) logEl.removeChild(logEl.lastChild);
+function log(msg, type='') {
+  const consoleLog = document.getElementById('log');
+  const d = new Date();
+  const timeStr = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
+  const entry = document.createElement('div');
+  entry.className = `log-entry ${type ? 'log-'+type : ''}`;
+  entry.textContent = `[${timeStr}] ${msg}`;
+  consoleLog.appendChild(entry);
+  consoleLog.scrollTop = consoleLog.scrollHeight;
 }
 
-function setControlsEnabled(en) {
-  connected = en;
-  document.getElementById('armToggle').classList.toggle('disabled', !en);
-  document.getElementById('keepArmedToggle').classList.toggle('disabled', !en);
-  document.getElementById('btnFire').disabled = !en;
-  document.getElementById('btnSetDist').disabled = !en;
-  document.getElementById('btnSetCd').disabled = !en;
-  document.getElementById('btnSetAd').disabled = !en;
-  document.getElementById('btnSave').disabled = !en;
-  document.getElementById('btnReset').disabled = !en;
+// UI要素の有効化/無効化
+function setUiEnabled(enabled) {
+  const inputs = document.querySelectorAll('button:not(#btnConnect), input');
+  inputs.forEach(el => el.disabled = !enabled);
 }
 
-// 接続
+// スライダーと入力ボックスの同期ヘルパー
+function setupSync(sliderId, inputId, valueId, scale=1) {
+  const slider = document.getElementById(sliderId);
+  const input = document.getElementById(inputId);
+  const valDisp = document.getElementById(valueId);
+
+  slider.addEventListener('input', (e) => {
+    userInteracting = true;
+    clearTimeout(interactTimeout);
+    input.value = e.target.value;
+    valDisp.textContent = e.target.value;
+  });
+  input.addEventListener('input', (e) => {
+    userInteracting = true;
+    clearTimeout(interactTimeout);
+    let v = parseInt(e.target.value) || 0;
+    v = Math.max(parseInt(input.min), Math.min(parseInt(input.max), v));
+    slider.value = Math.min(v, parseInt(slider.max));
+    valDisp.textContent = v;
+  });
+  // 操作が終わってから2秒間はマイコンからの同期による引き戻しを防御する
+  const release = () => {
+    interactTimeout = setTimeout(() => { userInteracting = false; }, 2000);
+  };
+  slider.addEventListener('change', release);
+  input.addEventListener('change', release);
+}
+
+setupSync('distSlider', 'distInput', 'distValue');
+setupSync('cdSlider', 'cdInput', 'cdValue');
+setupSync('sdSlider', 'sdInput', 'sdValue');
+setupSync('adSlider', 'adInput', 'adValue');
+
+// BLE通信
 document.getElementById('btnConnect').addEventListener('click', async () => {
+  if (connected) {
+    if(bleDevice) await bleDevice.gatt.disconnect();
+    return;
+  }
   try {
-    log('スキャン中...');
-    device = await navigator.bluetooth.requestDevice({
-      filters: [{ name: 'MoscartLauncher' }],
-      optionalServices: [SERVICE_UUID]
+    log('BLEデバイスを探しています...', 'warn');
+    bleDevice = await navigator.bluetooth.requestDevice({
+      filters: [{ services: [SERVICE_UUID] }]
     });
     
-    log(`発見: ${device.name}`, 'success');
-    
-    device.addEventListener('gattserverdisconnected', () => {
-      log('切断', 'error');
-      document.getElementById('btState').textContent = '未接続';
-      document.getElementById('btState').className = 'badge badge-bt-off';
-      setControlsEnabled(false);
-      document.body.classList.remove('armed');
-    });
-    
-    const server = await device.gatt.connect();
-    log('GATT接続OK', 'success');
-    
+    log('接続中...');
+    const server = await bleDevice.gatt.connect();
     const service = await server.getPrimaryService(SERVICE_UUID);
-    cmdChar = await service.getCharacteristic(CHAR_CMD_UUID);
-    statusChar = await service.getCharacteristic(CHAR_STATUS_UUID);
+    cmdCharacteristic = await service.getCharacteristic(CHAR_CMD_UUID);
+    statusCharacteristic = await service.getCharacteristic(CHAR_STATUS_UUID);
     
-    await statusChar.startNotifications();
-    statusChar.addEventListener('characteristicvaluechanged', handleStatus);
+    bleDevice.addEventListener('gattserverdisconnected', onDisconnected);
     
-    log('準備OK', 'success');
-    document.getElementById('btState').textContent = '接続中';
-    document.getElementById('btState').className = 'badge badge-bt-on';
-    setControlsEnabled(true);
+    // 通知の開始
+    await statusCharacteristic.startNotifications();
+    statusCharacteristic.addEventListener('characteristicvaluechanged', handleStatusNotify);
     
-    sendCommand({cmd: 'get_status'});
+    connected = true;
+    document.getElementById('btnConnect').textContent = '🔌 切断する';
+    document.getElementById('btnConnect').className = 'btn btn-ble connected';
+    setUiEnabled(true);
+    log('通信が確立しました。同期完了。', 'success');
     
-  } catch (e) {
-    log(`エラー: ${e.message}`, 'error');
+    // 初回ステータス要求
+    sendCommand({cmd: "get_status"});
+  } catch (err) {
+    log(`接続失敗: ${err.message}`, 'error');
   }
 });
 
-// 状態通知受信
-function handleStatus(event) {
-  const decoder = new TextDecoder();
-  const value = decoder.decode(event.target.value);
-  
+function onDisconnected() {
+  connected = false;
+  document.getElementById('btnConnect').textContent = '🔷 BLEデバイスに接続';
+  document.getElementById('btnConnect').className = 'btn btn-ble';
+  document.getElementById('lblArmed').textContent = '切断中';
+  document.getElementById('lblArmed').className = 'badge bg-off';
+  document.body.classList.remove('armed');
+  setUiEnabled(false);
+  log('Bluetooth接続が切れました。', 'error');
+}
+
+async function sendCommand(obj) {
+  if (!connected || !cmdCharacteristic) return;
+  const str = JSON.stringify(obj);
+  const enc = new TextEncoder();
   try {
-    const status = JSON.parse(value);
-    updateUI(status);
-  } catch (e) {
-    // 無視
+    await cmdCharacteristic.writeValueWithoutResponse(enc.encode(str));
+  } catch (err) {
+    log(`コマンド送信失敗: ${err.message}`, 'error');
   }
 }
 
-function updateUI(status) {
-  // 武装トグル & 背景色（タイマーOFFでも連動するように）
-  const toggle = document.getElementById('armToggle');
-  const isCurrentlyOn = toggle.classList.contains('on');
-  
-  if (status.armed !== isCurrentlyOn) {
-    toggle.classList.toggle('on', status.armed);
-  }
-  document.body.classList.toggle('armed', status.armed);
-  
-  // ARM状態変化をログ
-  if (status.armed !== lastArmedState) {
-    if (status.armed) {
-      log('🔴 ARMED', 'fire');
-    } else {
-      // 直前がARMだった場合のみ「DISARMED」をログに（初回判定を避ける）
-      if (lastArmedState === true) {
-        log('⚫ DISARMED');
+// ステータス通知の受信処理
+function handleStatusNotify(event) {
+  const dec = new TextDecoder();
+  const str = dec.decode(event.target.value);
+  try {
+    const data = JSON.parse(str);
+    
+    // モード表示の更新
+    const lblArmed = document.getElementById('lblArmed');
+    if (data.armed) {
+      if (data.start_delay_remain > 0) {
+        lblArmed.textContent = `監視開始まで あと ${data.start_delay_remain} 秒`;
+        lblArmed.className = 'badge bg-delay';
+        document.body.classList.add('armed');
+      } else {
+        lblArmed.textContent = '警戒中 (監視ON)';
+        lblArmed.className = 'badge bg-on';
+        document.body.classList.add('armed');
       }
-    }
-    lastArmedState = status.armed;
-  }
-  
-  // ARM維持トグル
-  const keepToggle = document.getElementById('keepArmedToggle');
-  keepToggle.classList.toggle('on', !!status.keep_armed);
-  
-  // 検知
-  const detEl = document.getElementById('detectState');
-  if (status.detected) {
-    detEl.textContent = '検知中';
-    detEl.className = 'badge badge-detected';
-  } else {
-    detEl.textContent = 'なし';
-    detEl.className = 'badge badge-clear';
-  }
-  
-  // 距離表示
-  document.getElementById('detectDistance').textContent = 
-    status.target_cm > 0 ? `${status.target_cm} cm` : '- cm';
-  
-  // クールダウン
-  const cdEl = document.getElementById('cooldownState');
-  if (status.cooldown) {
-    cdEl.textContent = '冷却中';
-    cdEl.className = 'badge badge-cooldown';
-  } else {
-    cdEl.textContent = '準備OK';
-    cdEl.className = 'badge badge-clear';
-  }
-  
-  // 設定値の同期（フォーカス中は触らない）
-  const activeId = document.activeElement.id;
-  
-  if (typeof status.distance === 'number' && activeId !== 'distInput' && activeId !== 'distSlider') {
-    document.getElementById('distSlider').value = status.distance;
-    document.getElementById('distInput').value = status.distance;
-    document.getElementById('distValue').textContent = status.distance;
-  }
-  if (typeof status.cooldown_ms === 'number' && activeId !== 'cdInput' && activeId !== 'cdSlider') {
-    const sec = Math.round(status.cooldown_ms / 1000);
-    document.getElementById('cdSlider').value = Math.min(sec, 60);
-    document.getElementById('cdInput').value = sec;
-    document.getElementById('cdValue').textContent = sec;
-  }
-  if (typeof status.auto_disarm_sec === 'number' && activeId !== 'adInput' && activeId !== 'adSlider') {
-    document.getElementById('adSlider').value = Math.min(status.auto_disarm_sec, 600);
-    document.getElementById('adInput').value = status.auto_disarm_sec;
-    document.getElementById('adValue').textContent = status.auto_disarm_sec;
-  }
-  
-  // カウントダウン表示
-  const cdDisp = document.getElementById('countdownDisplay');
-  if (status.armed && status.auto_disarm_remain >= 0) {
-    const remain = status.auto_disarm_remain;
-    const mm = Math.floor(remain / 60);
-    const ss = remain % 60;
-    const timeStr = mm > 0 
-      ? `${mm}:${ss.toString().padStart(2, '0')}`
-      : `${ss}`;
-    
-    cdDisp.innerHTML = `
-      自動解除まで
-      <span class="countdown-time">${timeStr}${mm > 0 ? '' : ' 秒'}</span>
-    `;
-    
-    if (remain <= 10) {
-      cdDisp.className = 'countdown-display urgent';
     } else {
-      cdDisp.className = 'countdown-display active';
+      lblArmed.textContent = '解除中 (安全OFF)';
+      lblArmed.className = 'badge bg-off';
+      document.body.classList.remove('armed');
     }
-  } else if (status.auto_disarm_sec > 0) {
-    cdDisp.innerHTML = `自動解除タイマー: <strong>${status.auto_disarm_sec} 秒</strong><br><small>(ARM時に作動)</small>`;
-    cdDisp.className = 'countdown-display';
-  } else {
-    cdDisp.innerHTML = '自動解除タイマー: OFF';
-    cdDisp.className = 'countdown-display';
-  }
-}
+    
+    // レーダー情報の更新
+    document.getElementById('lblDetected').textContent = data.detected ? '⚠️ 動体検知あり' : 'クリア';
+    document.getElementById('lblDetected').style.color = data.detected ? 'var(--danger)' : 'var(--success)';
+    document.getElementById('lblDistance').textContent = data.target_cm > 0 ? `${data.target_cm} cm` : '—';
+    
+    // クールダウン状態のログ表示補助
+    if (data.cooldown) document.getElementById('lblDistance').textContent += " (冷却中)";
 
-// コマンド送信
-async function sendCommand(cmdObj) {
-  if (!cmdChar) return;
-  try {
-    const json = JSON.stringify(cmdObj);
-    const encoder = new TextEncoder();
-    await cmdChar.writeValue(encoder.encode(json));
+    // タイマー表示
+    const lblTimer = document.getElementById('lblTimer');
+    if (data.armed) {
+      if (data.start_delay_remain > 0) {
+        lblTimer.textContent = 'ディレイ待機中...';
+      } else if (data.auto_disarm_remain >= 0) {
+        lblTimer.textContent = `${data.auto_disarm_remain} 秒 / ${data.auto_disarm_sec} 秒`;
+      } else {
+        lblTimer.textContent = '常時警戒モード';
+      }
+    } else {
+      lblTimer.textContent = '—';
+    }
+    
+    // オプションスイッチの同期
+    const toggle = document.getElementById('keepArmedToggle');
+    if (data.keep_armed) toggle.classList.add('on');
+    else toggle.classList.remove('on');
+
+    // ★重要: ユーザーが今スライダーを指で操作中でなければ、マイコン側の正確な数値をUIに反映する
+    if (!userInteracting) {
+      document.getElementById('distSlider').value = data.distance;
+      document.getElementById('distInput').value = data.distance;
+      document.getElementById('distValue').textContent = data.distance;
+      
+      const cdSec = data.cooldown_ms / 1000;
+      document.getElementById('cdSlider').value = cdSec;
+      document.getElementById('cdInput').value = cdSec;
+      document.getElementById('cdValue').textContent = cdSec;
+      
+      document.getElementById('sdSlider').value = data.start_delay_sec;
+      document.getElementById('sdInput').value = data.start_delay_sec;
+      document.getElementById('sdValue').textContent = data.start_delay_sec;
+
+      document.getElementById('adInput').value = data.auto_disarm_sec;
+      document.getElementById('adSlider').value = Math.min(data.auto_disarm_sec, 600);
+      document.getElementById('adValue').textContent = data.auto_disarm_sec;
+    }
+    
   } catch (e) {
-    log(`送信エラー: ${e.message}`, 'error');
+    // パースエラーは無視
   }
 }
 
-// 武装トグル
-document.getElementById('armToggle').addEventListener('click', () => {
-  if (!connected) return;
-  const isOn = document.getElementById('armToggle').classList.contains('on');
-  if (isOn) {
-    sendCommand({cmd: 'disarm'});
-  } else {
-    sendCommand({cmd: 'arm'});
-  }
-});
+// UIイベント定義
+document.getElementById('btnArm').addEventListener('click', () => { sendCommand({cmd: 'arm'}); log('🔴 警戒モードを有効化しました (監視ディレイ開始)'); });
+document.getElementById('btnDisarm').addEventListener('click', () => { sendCommand({cmd: 'disarm'}); log('🟢 警戒モードを解除しました'); });
+document.getElementById('btnFire').addEventListener('click', () => { sendCommand({cmd: 'fire'}); });
 
-// 手動発火
-document.getElementById('btnFire').addEventListener('click', () => {
-  sendCommand({cmd: 'fire'});
-  log('💥 手動発火', 'fire');
-});
-
-// 検知距離
-const distSlider = document.getElementById('distSlider');
-const distInput = document.getElementById('distInput');
-const distValue = document.getElementById('distValue');
-distSlider.addEventListener('input', (e) => {
-  distInput.value = e.target.value;
-  distValue.textContent = e.target.value;
-});
-distInput.addEventListener('input', (e) => {
-  let v = parseInt(e.target.value) || 100;
-  v = Math.max(10, Math.min(500, v));
-  distSlider.value = Math.min(v, 500);
-  distValue.textContent = v;
-});
 document.getElementById('btnSetDist').addEventListener('click', () => {
-  const v = parseInt(distInput.value);
+  const v = parseInt(document.getElementById('distInput').value);
   sendCommand({cmd: 'set_distance', value: v});
-  log(`距離: ${v} cm に設定`);
-});
-
-// クールダウン
-const cdSlider = document.getElementById('cdSlider');
-const cdInput = document.getElementById('cdInput');
-const cdValue = document.getElementById('cdValue');
-cdSlider.addEventListener('input', (e) => {
-  cdInput.value = e.target.value;
-  cdValue.textContent = e.target.value;
-});
-cdInput.addEventListener('input', (e) => {
-  let v = parseInt(e.target.value) || 0;
-  v = Math.max(0, Math.min(300, v));
-  cdSlider.value = Math.min(v, 60);
-  cdValue.textContent = v;
+  log(`設定変更: 有効距離を ${v} cm に指定`);
 });
 document.getElementById('btnSetCd').addEventListener('click', () => {
-  const v = parseInt(cdInput.value);
+  const v = parseInt(document.getElementById('cdInput').value);
   sendCommand({cmd: 'set_cooldown', value: v});
-  log(`クールダウン: ${v} 秒に設定`);
+  log(`設定変更: クールダウンを ${v} 秒に指定`);
 });
-
-// 自動DISARM
-const adSlider = document.getElementById('adSlider');
-const adInput = document.getElementById('adInput');
-const adValue = document.getElementById('adValue');
-adSlider.addEventListener('input', (e) => {
-  adInput.value = e.target.value;
-  adValue.textContent = e.target.value;
-});
-adInput.addEventListener('input', (e) => {
-  let v = parseInt(e.target.value) || 0;
-  v = Math.max(0, Math.min(3600, v));
-  adSlider.value = Math.min(v, 600);
-  adValue.textContent = v;
+document.getElementById('btnSetSd').addEventListener('click', () => {
+  const v = parseInt(document.getElementById('sdInput').value);
+  sendCommand({cmd: 'set_start_delay', value: v});
+  log(`設定変更: 監視開始ディレイを ${v} 秒に指定`);
 });
 document.getElementById('btnSetAd').addEventListener('click', () => {
-  const v = parseInt(adInput.value);
+  const v = parseInt(document.getElementById('adInput').value);
   sendCommand({cmd: 'set_auto_disarm', value: v});
-  log(`自動DISARM: ${v} 秒に設定`);
+  log(`設定変更: 自動解除タイマーを ${v} 秒に指定`);
 });
 
-// ARM維持トグル
 document.getElementById('keepArmedToggle').addEventListener('click', () => {
   if (!connected) return;
-  const isOn = document.getElementById('keepArmedToggle').classList.contains('on');
-  sendCommand({cmd: 'set_keep_armed', value: !isOn});
-  log(`切断時ARM維持: ${!isOn ? 'ON' : 'OFF'}`);
+  const toggle = document.getElementById('keepArmedToggle');
+  const isNowOn = toggle.classList.contains('on');
+  sendCommand({cmd: 'set_keep_armed', value: !isNowOn});
+  log(`オプション: 切断時警戒維持を ${!isNowOn ? 'ON' : 'OFF'} に切り替え`);
 });
 
-// 設定保存
-document.getElementById('btnSave').addEventListener('click', () => {
-  sendCommand({cmd: 'save_settings'});
-  log('💾 設定を保存しました', 'success');
-});
-
-// 工場リセット
+document.getElementById('btnSave').addEventListener('click', () => { sendCommand({cmd: 'save_settings'}); log('💾 パラメータをマイコンの内蔵フラッシュ(NVS)に保存しました', 'success'); });
 document.getElementById('btnReset').addEventListener('click', () => {
-  if (confirm('全ての設定を初期値に戻しますか？\n（保存済みデータも削除されます）')) {
+  if (confirm('すべての内部設定をデフォルト(初期値)に戻しますか？')) {
     sendCommand({cmd: 'reset_settings'});
-    log('⚠️ 工場リセット実行', 'error');
+    log('🔄 システムパラメータを初期化しました', 'warn');
   }
 });
-
-// 初期化
-if (!navigator.bluetooth) {
-  log('Web Bluetooth非対応', 'error');
-  log('Bluefy(iOS)またはChromeを使用', 'error');
-  document.getElementById('btnConnect').disabled = true;
-} else {
-  log('準備完了');
-}
 </script>
 </body>
 </html>
